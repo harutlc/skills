@@ -15,9 +15,12 @@ preserve existing install names. Tracked repository naming is unchanged.
 
 Discovery skips target directories such as `.claude/` and `.agents/`, which usually
 hold copies of a repository's skills. A repository with no other skills has its
-root `.agents/skills/` discovered instead.
+root `.agents/skills/` discovered instead. Discovery follows links to folders inside
+the repository (not into `.git`, and not from inside a skill folder); a skill reached
+both directly and through a link is listed once, under its direct path. `--track`
+installs do not follow these links.
 
-The `.agents/skills/` fallback requires both `.agents` and `skills` to be real directories, not symlinks or junctions, even with `follow_source_links: true`. An intentionally followed repository root remains supported. Discovered agent installs and updates reject intermediate or final destination links; audits run before publication, and a blocked audit leaves existing agent contents unchanged.
+The `.agents/skills/` fallback requires both `.agents` and `skills` to be real directories, not symlinks or junctions, even with `follow_source_links: true`. An intentionally followed repository root remains supported. Discovered agent installs and updates reject intermediate or final destination links; audits run before publication, and a blocked audit leaves existing agent contents unchanged. When a symlink in a skill, agent or tracked repository from a Git source leads outside the repository or into its `.git` folder, install and update stop with an error and leave nothing from that repository or commit installed, so a repository cannot copy a file from elsewhere on your machine into a skill or a copy-mode target. A link to another file or folder in the same repository is copied as that file or folder, also when you install a single folder of the repository. A folder reached through a second link, or a link back into a folder being copied, stops the install with an error.
 
 For an explicit, untracked skill source, `install <source> --dry-run --json`
 returns `planned: [{name, path}]`: canonical install names and repository-relative
@@ -135,7 +138,7 @@ or `--kind agent` to choose which resource to manage.
 | `--kind <skill\|agent>` | Restrict resource discovery |
 | `--agent, -a <names>` | Select agents by name (comma-separated) |
 | `--branch, -b <name>` | Select a Git branch, tag or commit SHA (overrides a ref in a web URL) |
-| `--force, -f` | Overwrite existing and explicitly override audit blocking from findings (not a failed scan) |
+| `--force, -f` | Overwrite existing and explicitly override audit blocking from findings (not a failed scan); if the new version fails to install or is blocked, the installed skill is kept |
 | `--update, -u` | Update if exists |
 | `--track, -t` | Track for updates (preserves .git); a local path works if it is a git repository. Rejects `--all`, `--yes`, `--skill`, and `--agent` |
 | `--skill, -s <names>` | Select specific skills from multi-skill repo (comma-separated). Rejects `--track`, `--all`, and `--yes` |
@@ -145,7 +148,7 @@ or `--kind agent` to choose which resource to manage.
 | `--exclude <name>` | Skip specific skills during multi-skill install (repeatable) |
 | `--skip-audit` | Skip security audit for this install |
 | `--audit-threshold <t>` / `--threshold <t>` / `-T <t>` | Override block threshold for this run (`critical\|high\|medium\|low\|info`; shorthand: `c\|h\|m\|l\|i`, plus `crit`, `med`) |
-| `--json` | Noninteractive JSON; selects all when no skill/agent filter is given; requires `--force` to overwrite existing items; reports skipped names in `skipped`; retains audit blocking; when every skill fails or is blocked it exits non-zero with an `error` field naming each one, while a partial failure lists names in `failed` and exits 0 |
+| `--json` | Noninteractive JSON; selects all when no skill/agent filter is given; requires `--force` to overwrite existing items; reports skipped names in `skipped`; retains audit blocking; when every skill fails or is blocked it exits non-zero with an `error` field naming each one, while a partial skill failure lists names in `failed` and exits 0; any failed agent exits non-zero |
 | `--dry-run, -n` | Preview |
 
 **Fuzzy subdirectory resolution:** When a monorepo has nested skill directories, you can specify just the skill name — e.g., `user/repo/vue-best-practices` finds `skills/vue-best-practices/` automatically. Fails with an error if multiple matches exist.
